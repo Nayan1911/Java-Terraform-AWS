@@ -1,7 +1,3 @@
-provider "kubernetes" {
-  kubeconfig = "~/.kube/config"  # Path to your kubeconfig file
-}
-
 resource "kubernetes_deployment_v1" "default" {
   metadata {
     name = "example-hello-app-deployment"
