@@ -1,41 +1,34 @@
 provider "aws" {
-  region = "us-east-1"  # Specify your desired AWS region
-  # Add other necessary AWS credentials or configuration options here
+  region = "us-east-1"  # Update with your desired AWS region
 }
 
-resource "aws_vpc" "example" {
+# Provision a VPC for the EKS cluster
+resource "aws_vpc" "eks_vpc" {
   cidr_block = "10.0.0.0/16"
-  enable_dns_hostnames = true
 }
 
-resource "aws_subnet" "example_az1" {
-  vpc_id            = aws_vpc.example.id
-  cidr_block        = "10.0.1.0/24"  # Adjust the CIDR block as needed for the first AZ
-  availability_zone = "us-east-1a"   # Specify the desired availability zone for the first subnet
+# Provision subnets for the EKS cluster across multiple availability zones
+resource "aws_subnet" "eks_subnets" {
+  count             = 2
+  vpc_id            = aws_vpc.eks_vpc.id
+  cidr_block        = "10.0.${count.index}.0/24"
+  availability_zone = "us-east-1a"  # Update with your desired availability zones
 }
 
-resource "aws_subnet" "example_az2" {
-  vpc_id            = aws_vpc.example.id
-  cidr_block        = "10.0.2.0/24"  # Adjust the CIDR block as needed for the second AZ
-  availability_zone = "us-east-1b"   # Specify the desired availability zone for the second subnet
-}
-
+# Provision an EKS cluster
 resource "aws_eks_cluster" "example" {
-  name     = "example-eks-cluster"
-  role_arn = aws_iam_role.eks_cluster_role_nayan.arn
+  name            = "example-eks-cluster"
+  role_arn        = aws_iam_role.eks_cluster_role.arn
   vpc_config {
-    subnet_ids = [
-      aws_subnet.example_az1.id,
-      aws_subnet.example_az2.id,
-    ]
+    subnet_ids = aws_subnet.eks_subnets[*].id
   }
 }
 
-
-resource "aws_iam_role" "eks_cluster_role_nayan" {
-  name = "example-eks-cluster-role-nayan"
+# Create an IAM role for the EKS cluster
+resource "aws_iam_role" "eks_cluster_role" {
+  name               = "example-eks-cluster-role"
   assume_role_policy = jsonencode({
-    Version = "2012-10-17",
+    Version   = "2012-10-17",
     Statement = [{
       Effect    = "Allow",
       Principal = {
@@ -44,4 +37,72 @@ resource "aws_iam_role" "eks_cluster_role_nayan" {
       Action    = "sts:AssumeRole"
     }]
   })
+}
+
+# Create a Kubernetes namespace for the application
+resource "kubernetes_namespace" "example_namespace" {
+  metadata {
+    name = "example-namespace"
+  }
+}
+
+# Deploy the application to the Kubernetes cluster
+resource "kubernetes_deployment" "example_app" {
+  metadata {
+    name      = "example-app"
+    namespace = kubernetes_namespace.example_namespace.metadata[0].name
+    labels = {
+      app = "example-app"
+    }
+  }
+
+  spec {
+    replicas = 1
+
+    selector {
+      match_labels = {
+        app = "example-app"
+      }
+    }
+
+    template {
+      metadata {
+        labels = {
+          app = "example-app"
+        }
+      }
+
+      spec {
+        container {
+          name  = "example-app"
+          image = "sharmanayan/hello-world:0.1.RELEASE"  # Update with your Docker image
+
+          port {
+            container_port = 80
+          }
+        }
+      }
+    }
+  }
+}
+
+# Expose the application using a Kubernetes service
+resource "kubernetes_service" "example_service" {
+  metadata {
+    name      = "example-service"
+    namespace = kubernetes_namespace.example_namespace.metadata[0].name
+  }
+
+  spec {
+    selector = {
+      app = kubernetes_deployment.example_app.spec[0].metadata[0].labels.app
+    }
+
+    port {
+      port        = 80
+      target_port = 80
+    }
+
+    type = "LoadBalancer"
+  }
 }

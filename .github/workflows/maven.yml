@@ -47,15 +47,18 @@ jobs:
       with:
         terraform_version: 1.0.0
 
-    - name: Save kubeconfig file
-      run: |
-        mkdir ~/.kube
-        aws eks --region ${{ env.AWS_REGION }} update-kubeconfig --name ${{ env.AWS_CLUSTER }}
-        mv /path/to/your/kubeconfig.yaml ~/.kube/config
-        chmod 600 ~/.kube/config\
+    # - name: Save kubeconfig file
+    #   run: |
+    #     mkdir ~/.kube
+    #     aws eks --region ${{ env.AWS_REGION }} update-kubeconfig --name ${{ env.AWS_CLUSTER }}
+    #     mv /path/to/your/kubeconfig.yaml ~/.kube/config
+    #     chmod 600 ~/.kube/config\
   
     - name: Initialize Terraform
       run: terraform init
+
+    - name: Terraform validate
+      run: terraform validate
 
     - name: Terraform Plan
       run: terraform plan
