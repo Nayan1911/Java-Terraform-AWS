@@ -12,7 +12,7 @@ resource "kubernetes_secret" "kubeconfig" {
   }
 
   data = {
-    "config" = base64encode(file("~/.kube/config"))
+    "config" = base64encode(file("~/.kube/config_content"))
   }
 }
 
@@ -62,14 +62,6 @@ resource "kubernetes_deployment_v1" "default" {
             period_seconds        = 3
           }
 
-          volume {
-            name = "kubeconfig-volume"
-
-            secret {
-              secret_name = kubernetes_secret.kubeconfig.metadata.0.name
-            }
-          }
-
           volume_mount {
             name      = "kubeconfig-volume"
             mount_path = "/kube/config"
@@ -84,28 +76,15 @@ resource "kubernetes_deployment_v1" "default" {
             type = "RuntimeDefault"
           }
         }
+
+        volumes {
+          name = "kubeconfig-volume"
+
+          secret {
+            secret_name = kubernetes_secret.kubeconfig.metadata.0.name
+          }
+        }
       }
     }
-  }
-}
-
-
-
-resource "kubernetes_service_v1" "default" {
-  metadata {
-    name = "example-hello-app-loadbalancer"
-  }
-
-  spec {
-    selector = {
-      app = kubernetes_deployment_v1.default.spec[0].selector[0].match_labels.app
-    }
-
-    port {
-      port        = 80
-      target_port = 8080  # Use the container port directly
-    }
-
-    type = "LoadBalancer"
   }
 }
