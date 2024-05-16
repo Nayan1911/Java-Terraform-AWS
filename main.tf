@@ -16,7 +16,7 @@ resource "aws_subnet" "example" {
 
 resource "aws_eks_cluster" "example" {
   name     = "example-eks-cluster"
-  role_arn = aws_iam_role.eks_cluster_role.arn
+  role_arn = aws_iam_role.eks_cluster_role_nayan.arn
   vpc_config {
     subnet_ids = [aws_subnet.example.id]
   }
