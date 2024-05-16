@@ -1,5 +1,5 @@
 provider "kubernetes" {
-  load_config_file = true  # Automatically load kubeconfig file
+  kubeconfig = "~/.kube/config"  # Path to your kubeconfig file
 }
 
 resource "kubernetes_deployment_v1" "default" {
