@@ -8,19 +8,29 @@ resource "aws_vpc" "example" {
   enable_dns_hostnames = true
 }
 
-resource "aws_subnet" "example" {
-  vpc_id     = aws_vpc.example.id
-  cidr_block = "10.0.1.0/24"  # Adjust the CIDR block as needed
-  availability_zone = "us-east-1a"  # Specify the desired availability zone
+resource "aws_subnet" "example_az1" {
+  vpc_id            = aws_vpc.example.id
+  cidr_block        = "10.0.1.0/24"  # Adjust the CIDR block as needed for the first AZ
+  availability_zone = "us-east-1a"   # Specify the desired availability zone for the first subnet
+}
+
+resource "aws_subnet" "example_az2" {
+  vpc_id            = aws_vpc.example.id
+  cidr_block        = "10.0.2.0/24"  # Adjust the CIDR block as needed for the second AZ
+  availability_zone = "us-east-1b"   # Specify the desired availability zone for the second subnet
 }
 
 resource "aws_eks_cluster" "example" {
   name     = "example-eks-cluster"
   role_arn = aws_iam_role.eks_cluster_role_nayan.arn
   vpc_config {
-    subnet_ids = [aws_subnet.example.id]
+    subnet_ids = [
+      aws_subnet.example_az1.id,
+      aws_subnet.example_az2.id,
+    ]
   }
 }
+
 
 resource "aws_iam_role" "eks_cluster_role_nayan" {
   name = "example-eks-cluster-role-nayan"
