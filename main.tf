@@ -95,7 +95,7 @@ resource "kubernetes_service" "example_service" {
 
   spec {
     selector = {
-      app = kubernetes_deployment.example_app.spec[0].metadata[0].labels.app
+      app = kubernetes_deployment.example_app.spec[0].template[0].metadata[0].labels["app"]
     }
 
     port {
@@ -106,3 +106,4 @@ resource "kubernetes_service" "example_service" {
     type = "LoadBalancer"
   }
 }
+
