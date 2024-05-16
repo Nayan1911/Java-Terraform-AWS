@@ -14,7 +14,6 @@ resource "aws_subnet" "eks_subnets" {
   cidr_block        = "10.0.${count.index}.0/24"
   availability_zone = "us-east-1a"  # Update with your desired availability zones
 }
-
 # Provision an EKS cluster
 resource "aws_eks_cluster" "example" {
   name            = "example-eks-cluster"
@@ -38,7 +37,6 @@ resource "aws_iam_role" "eks_cluster_role" {
     }]
   })
 }
-
 # Create a Kubernetes namespace for the application
 resource "kubernetes_namespace" "example_namespace" {
   metadata {
