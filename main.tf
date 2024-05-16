@@ -17,7 +17,6 @@ resource "aws_subnet" "example" {
 resource "aws_eks_cluster" "example" {
   name     = "example-eks-cluster"
   role_arn = aws_iam_role.eks_cluster_role.arn
-  version  = "1.21"  # Specify your desired Kubernetes version
   vpc_config {
     subnet_ids = [aws_subnet.example.id]
   }

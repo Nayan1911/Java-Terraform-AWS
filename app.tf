@@ -1,5 +1,5 @@
 provider "kubernetes" {
-  config_path = "~/.kube/config"  # Specify the path to your kubeconfig file for AWS EKS
+  load_config_file = true  # Automatically load kubeconfig file
 }
 
 resource "kubernetes_deployment_v1" "default" {
