@@ -1,0 +1,233 @@
+name: Java CI with Maven
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+env:
+  PROJECT_ID: ${{ secrets.GKE_PROJECT }}
+  GKE_CLUSTER: cluster-1    # TODO: update to cluster name
+  GKE_ZONE: us-central1
+  IMAGE_NAME: sharmanayan/hello-world:0.1.RELEASE
+  GOOGLE_APPLICATION_CREDENTIAL: ${{ secrets.SA_KEY }}
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up JDK 17
+      uses: actions/setup-java@v3
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        cache: maven
+
+    - name: Build with Maven
+      run: mvn -B package --file pom.xml
+
+    - name: Check tag
+      run:
+        echo ${{ env.IMAGE_NAME }}
+
+    - name: Build and push Docker image
+      run: |
+        echo "Qwerty@12345" | docker login -u sharmanayan --password-stdin 
+        docker build -t ${{ env.IMAGE_NAME }} .
+        docker push ${{ env.IMAGE_NAME }}
+
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Set up Terraform
+      uses: hashicorp/setup-terraform@v1
+      with:
+        terraform_version: 1.0.0
+
+    - name: Configure Google Cloud credentials
+      uses: google-github-actions/setup-gcloud@v1
+
+    - name: Authenticate gcloud
+      uses: google-github-actions/auth@v0
+      with:
+        credentials_json: ${{ secrets.SA_KEY }}
+
+    - name: Initialize Terraform
+      run: terraform init
+
+    - name: Debug Credentials
+      run: |
+        echo "GOOGLE_APPLICATION_CREDENTIALS: $GOOGLE_APPLICATION_CREDENTIALS"
+        gcloud auth list
+
+    - name: Terraform Plan
+      run: terraform plan
+    
+    - name: Terraform Apply
+      run: terraform apply -auto-approve
+
+    # - name: kubectl - Google Cloud GKE cluster.
+    #   uses: ameydev/gke-kubectl-action@master
+    #   env:
+    #     PROJECT_ID: ${{ secrets.GKE_PROJECT }}
+    #     APPLICATION_CREDENTIALS: ${{ secrets.GKE_SA_KEY }}
+    #     CLUSTER_NAME: ${{ env.GKE_CLUSTER }}
+    #     ZONE_NAME: ${{ env.GKE_ZONE }}
+    #   with:
+    #     args: apply -f deployment.yaml
+
+
+    # provider "google" {
+    #   project     = var.project_id
+    #   region      = var.region
+    #   zone        = var.zone
+    # }
+    
+    # resource "google_container_cluster" "cluster" {
+    #   name               = var.cluster_name
+    #   location           = var.zone
+    #   initial_node_count = 1
+    
+    #   node_config {
+    #     machine_type = "n1-standard-1"
+    #     oauth_scopes = [
+    #       "https://www.googleapis.com/auth/compute",
+    #       "https://www.googleapis.com/auth/devstorage.read_only",
+    #       "https://www.googleapis.com/auth/logging.write",
+    #       "https://www.googleapis.com/auth/monitoring"
+    #     ]
+    #   }
+    
+    #   timeouts {
+    #     create = "30m"
+    #     update = "30m"
+    #   }
+    # }
+    
+    # provider "kubernetes" {
+    #   load_config_file = false
+    #   host             = "https://${google_container_cluster.cluster.endpoint}"
+    #   token            = var.kubernetes_token
+    #   # Set other authentication parameters as needed
+    # }
+    
+    # resource "kubernetes_deployment" "hello_world_deployment" {
+    #   metadata {
+    #     name      = "hello-world-deployment"
+    #     namespace = "default"
+    #   }
+    
+    #   spec {
+    #     selector {
+    #       match_labels = {
+    #         app = "hello-world"
+    #       }
+    #     }
+    
+    #     template {
+    #       metadata {
+    #         labels = {
+    #           app = "hello-world"
+    #         }
+    #       }
+    
+    #       spec {
+    #         container {
+    #           image = "sharmanayan/hello-world:0.1.RELEASE"
+    #           name  = "hello-world"
+    #           ports {
+    #             container_port = 8080
+    #           }
+    #         }
+    #       }
+    #     }
+    #   }
+    # }
+    
+    # resource "kubernetes_service" "hello_world_service" {
+    #   metadata {
+    #     name      = "hello-world-service"
+    #     namespace = "default"
+    #   }
+    
+    #   spec {
+    #     selector = {
+    #       app = "hello-world"
+    #     }
+    
+    #     port {
+    #       protocol   = "TCP"
+    #       port       = 80
+    #       target_port = 8080
+    #     }
+    
+    #     type = "LoadBalancer"
+    #   }
+    # }
+    
+    # resource "kubernetes_ingress" "hello_world_ingress" {
+    #   metadata {
+    #     name      = "hello-world-ingress"
+    #     namespace = "default"
+    #     annotations = {
+    #       "kubernetes.io/ingress.class" = "nginx"
+    #     }
+    #   }
+    
+    #   spec {
+    #     rule {
+    #       http {
+    #         path {
+    #           path = "/"
+    #           backend {
+    #             service_name = kubernetes_service.hello_world_service.metadata[0].name
+    #             service_port = kubernetes_service.hello_world_service.spec[0].port[0].port
+    #           }
+    #         }
+    #       }
+    #     }
+    #   }
+    # }
+
+    # variable "credentials_file" {
+    #   description = "credentials"
+    #   type        = string
+    #   default     = "credentials_file"
+    # }
+    
+    # variable "project_id" {
+    #   description = "Google Cloud project ID"
+    #   type        = string
+    #   default     = "glowing-palace-414116"
+    # }
+    
+    # variable "region" {
+    #   description = "Google Cloud region"
+    #   type        = string
+    #   default     = "us-central1"
+    # }
+    
+    # variable "zone" {
+    #   description = "Google Cloud zone"
+    #   type        = string
+    #   default     = "us-central1-c"
+    # }
+    
+    # variable "cluster_name" {
+    #   description = "Name of the GKE cluster"
+    #   type        = string
+    #   default     = "cluster-1"
+    # }
+    
+    # variable "kubernetes_token" {
+    #   description = "Authentication token for accessing the Kubernetes API server"
+    # }
