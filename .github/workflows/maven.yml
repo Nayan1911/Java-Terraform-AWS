@@ -9,7 +9,7 @@ on:
 env:
   AWS_REGION: us-east-1
   IMAGE_NAME: sharmanayan/hello-world:0.1.RELEASE
-  AWS_CLUSTER: cluster-1
+  AWS_CLUSTER: example-eks-cluster
 
 jobs:
   build:

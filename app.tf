@@ -24,7 +24,7 @@ resource "kubernetes_deployment_v1" "default" {
 
           port {
             container_port = 8080
-            name           = "hello-app-svc"
+            name           = "http"
           }
 
           liveness_probe {
@@ -54,6 +54,7 @@ resource "kubernetes_deployment_v1" "default" {
     }
   }
 }
+
 
 resource "kubernetes_service_v1" "default" {
   metadata {
