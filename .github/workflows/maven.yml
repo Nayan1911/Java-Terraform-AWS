@@ -47,10 +47,10 @@ jobs:
       with:
         terraform_version: 1.0.0
 
-    - name: Save kubeconfig file
-      run: |
-        mkdir -p ~/.kube
-        echo "$KUBECONFIG_CONTENT" > ~/.kube/config
+    # - name: Save kubeconfig file
+    #   run: |
+    #     mkdir -p ~/.kube
+    #     echo "$KUBECONFIG_CONTENT" > ~/.kube/config
   
     - name: Initialize Terraform
       run: terraform init
