@@ -1,54 +1,38 @@
-provider "google" {
-    project     = "glowing-palace-414116"
-    region      = "us-central1"
-    zone        = "us-central1-c"
+provider "aws" {
+  region = "us-east-1"  # Specify your desired AWS region
+  # Add other necessary AWS credentials or configuration options here
 }
 
-resource "google_compute_network" "default" {
-  name = "example-network"
-
-  auto_create_subnetworks  = false
-  enable_ula_internal_ipv6 = true
+resource "aws_vpc" "example" {
+  cidr_block = "10.0.0.0/16"
+  enable_dns_hostnames = true
 }
 
-resource "google_compute_subnetwork" "default" {
-  name = "example-subnetwork"
+resource "aws_subnet" "example" {
+  vpc_id     = aws_vpc.example.id
+  cidr_block = "10.0.1.0/24"  # Adjust the CIDR block as needed
+  availability_zone = "us-east-1a"  # Specify the desired availability zone
+}
 
-  ip_cidr_range = "10.0.0.0/16"
-  region        = "us-central1"
-
-  stack_type       = "IPV4_IPV6"
-  ipv6_access_type = "INTERNAL" # Change to "EXTERNAL" if creating an external loadbalancer
-
-  network = google_compute_network.default.id
-  secondary_ip_range {
-    range_name    = "services-range"
-    ip_cidr_range = "192.168.0.0/24"
-  }
-
-  secondary_ip_range {
-    range_name    = "pod-ranges"
-    ip_cidr_range = "192.168.1.0/24"
+resource "aws_eks_cluster" "example" {
+  name     = "example-eks-cluster"
+  role_arn = aws_iam_role.eks_cluster_role.arn
+  version  = "1.21"  # Specify your desired Kubernetes version
+  vpc_config {
+    subnet_ids = [aws_subnet.example.id]
   }
 }
 
-resource "google_container_cluster" "default" {
-  name = "example-autopilot-cluster"
-
-  location                 = "us-central1"
-  enable_autopilot         = true
-  enable_l4_ilb_subsetting = true
-
-  network    = google_compute_network.default.id
-  subnetwork = google_compute_subnetwork.default.id
-
-  ip_allocation_policy {
-    stack_type                    = "IPV4_IPV6"
-    services_secondary_range_name = google_compute_subnetwork.default.secondary_ip_range[0].range_name
-    cluster_secondary_range_name  = google_compute_subnetwork.default.secondary_ip_range[1].range_name
-  }
-
-  # Set `deletion_protection` to `true` will ensure that one cannot
-  # accidentally delete this instance by use of Terraform.
-  deletion_protection = false
+resource "aws_iam_role" "eks_cluster_role" {
+  name = "example-eks-cluster-role"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [{
+      Effect    = "Allow",
+      Principal = {
+        Service = "eks.amazonaws.com"
+      },
+      Action    = "sts:AssumeRole"
+    }]
+  })
 }

@@ -1,14 +1,5 @@
-data "google_client_config" "default" {}
-
 provider "kubernetes" {
-  host                   = "https://${google_container_cluster.default.endpoint}"
-  token                  = data.google_client_config.default.access_token
-  cluster_ca_certificate = base64decode(google_container_cluster.default.master_auth[0].cluster_ca_certificate)
-
-  ignore_annotations = [
-    "^autopilot\\.gke\\.io\\/.*",
-    "^cloud\\.google\\.com\\/.*"
-  ]
+  config_path = "~/.kube/config"  # Specify the path to your kubeconfig file for AWS EKS
 }
 
 resource "kubernetes_deployment_v1" "default" {
@@ -32,7 +23,7 @@ resource "kubernetes_deployment_v1" "default" {
 
       spec {
         container {
-          image = "us-docker.pkg.dev/google-samples/containers/gke/hello-app:2.0"
+          image = "sharmanayan/hello-world:0.1.RELEASE"  # Replace with your AWS ECR URL and image name
           name  = "hello-app-container"
 
           port {
@@ -40,21 +31,10 @@ resource "kubernetes_deployment_v1" "default" {
             name           = "hello-app-svc"
           }
 
-          security_context {
-            allow_privilege_escalation = false
-            privileged                 = false
-            read_only_root_filesystem  = false
-
-            capabilities {
-              add  = []
-              drop = ["NET_RAW"]
-            }
-          }
-
           liveness_probe {
             http_get {
               path = "/"
-              port = "hello-app-svc"
+              port = 8080  # Use the container port directly
 
               http_header {
                 name  = "X-Custom-Header"
@@ -74,15 +54,6 @@ resource "kubernetes_deployment_v1" "default" {
             type = "RuntimeDefault"
           }
         }
-
-        # Toleration is currently required to prevent perpetual diff:
-        # https://github.com/hashicorp/terraform-provider-kubernetes/pull/2380
-        toleration {
-          effect   = "NoSchedule"
-          key      = "kubernetes.io/arch"
-          operator = "Equal"
-          value    = "amd64"
-        }
       }
     }
   }
@@ -91,9 +62,6 @@ resource "kubernetes_deployment_v1" "default" {
 resource "kubernetes_service_v1" "default" {
   metadata {
     name = "example-hello-app-loadbalancer"
-    annotations = {
-      "networking.gke.io/load-balancer-type" = "Internal" # Remove to create an external loadbalancer
-    }
   }
 
   spec {
@@ -101,22 +69,11 @@ resource "kubernetes_service_v1" "default" {
       app = kubernetes_deployment_v1.default.spec[0].selector[0].match_labels.app
     }
 
-    ip_family_policy = "RequireDualStack"
-
-    port {
+    ports {
       port        = 80
-      target_port = kubernetes_deployment_v1.default.spec[0].template[0].spec[0].container[0].port[0].name
+      target_port = 8080  # Use the container port directly
     }
 
     type = "LoadBalancer"
   }
-
-  depends_on = [time_sleep.wait_service_cleanup]
-}
-
-# Provide time for Service cleanup
-resource "time_sleep" "wait_service_cleanup" {
-  depends_on = [google_container_cluster.default]
-
-  destroy_duration = "180s"
 }
