@@ -69,7 +69,7 @@ resource "kubernetes_service_v1" "default" {
       app = kubernetes_deployment_v1.default.spec[0].selector[0].match_labels.app
     }
 
-    ports {
+    port {
       port        = 80
       target_port = 8080  # Use the container port directly
     }
