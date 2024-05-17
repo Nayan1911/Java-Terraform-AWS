@@ -14,14 +14,6 @@ resource "aws_subnet" "eks_subnets" {
   cidr_block        = "10.0.${count.index}.0/24"
   availability_zone = "us-east-1a"  # Update with your desired availability zones
 }
-# Provision an EKS cluster
-resource "aws_eks_cluster" "example" {
-  name            = "example-eks-cluster"
-  role_arn        = aws_iam_role.eks_cluster_role.arn
-  vpc_config {
-    subnet_ids = aws_subnet.eks_subnets[*].id
-  }
-}
 
 # Create an IAM role for the EKS cluster
 resource "aws_iam_role" "eks_cluster_role" {
@@ -37,12 +29,24 @@ resource "aws_iam_role" "eks_cluster_role" {
     }]
   })
 }
+
+# Provision an EKS cluster
+resource "aws_eks_cluster" "example" {
+  name            = "example-eks-cluster"
+  role_arn        = aws_iam_role.eks_cluster_role.arn
+  vpc_config {
+    subnet_ids = aws_subnet.eks_subnets[*].id
+  }
+}
+
 # Create a Kubernetes namespace for the application
 resource "kubernetes_namespace" "example_namespace" {
+  depends_on = [aws_eks_cluster.example]
   metadata {
     name = "example-namespace"
   }
 }
+
 
 # Deploy the application to the Kubernetes cluster
 resource "kubernetes_deployment" "example_app" {
