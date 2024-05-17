@@ -7,13 +7,19 @@ resource "aws_vpc" "eks_vpc" {
   cidr_block = "10.0.0.0/16"
 }
 
+variable "availability_zones" {
+  type    = list(string)
+  default = ["us-east-1a", "us-east-1b"]  # Update with your desired availability zones
+}
+
 # Provision subnets for the EKS cluster across multiple availability zones
 resource "aws_subnet" "eks_subnets" {
-  count             = 2
+  count             = length(var.availability_zones)
   vpc_id            = aws_vpc.eks_vpc.id
   cidr_block        = "10.0.${count.index}.0/24"
-  availability_zone = element(split(",", var.availability_zones), count.index)
+  availability_zone = var.availability_zones[count.index]
 }
+
 
 # Create an IAM role for the EKS cluster
 resource "aws_iam_role" "eks_cluster_role" {
