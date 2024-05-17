@@ -45,18 +45,11 @@ resource "aws_eks_cluster" "example" {
   }
 }
 
-# Create a Kubernetes namespace for the application
-resource "kubernetes_namespace" "example_namespace" {
-  depends_on = [aws_eks_cluster.example]
-  metadata {
-    name = "example-namespace"
-  }
-}
+
 #Deploy the application to the Kubernetes cluster
 resource "kubernetes_deployment" "example_app" {
   metadata {
     name      = "example-app"
-    namespace = kubernetes_namespace.example_namespace.metadata[0].name
     labels = {
       app = "example-app"
     }
@@ -96,7 +89,6 @@ resource "kubernetes_deployment" "example_app" {
 resource "kubernetes_service" "example_service" {
   metadata {
     name      = "example-service"
-    namespace = kubernetes_namespace.example_namespace.metadata[0].name
   }
 
   spec {

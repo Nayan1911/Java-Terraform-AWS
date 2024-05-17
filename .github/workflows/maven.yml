@@ -65,3 +65,14 @@ jobs:
     
     - name: Terraform Apply
       run: terraform apply -auto-approve
+
+
+# # Create a Kubernetes namespace for the application
+# resource "kubernetes_namespace" "example_namespace" {
+#   depends_on = [aws_eks_cluster.example]
+#   metadata {
+#     name = "example-namespace"
+#   }
+# }
+
+# namespace = kubernetes_namespace.example_namespace.metadata[0].name
