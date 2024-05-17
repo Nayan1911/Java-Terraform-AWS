@@ -12,7 +12,7 @@ resource "aws_subnet" "eks_subnets" {
   count             = 2
   vpc_id            = aws_vpc.eks_vpc.id
   cidr_block        = "10.0.${count.index}.0/24"
-  availability_zone = "us-east-1a"  # Update with your desired availability zones
+  availability_zone = element(split(",", var.availability_zones), count.index)
 }
 
 # Create an IAM role for the EKS cluster
@@ -46,7 +46,6 @@ resource "kubernetes_namespace" "example_namespace" {
     name = "example-namespace"
   }
 }
-
 
 # Deploy the application to the Kubernetes cluster
 resource "kubernetes_deployment" "example_app" {
