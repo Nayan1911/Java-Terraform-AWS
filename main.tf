@@ -91,17 +91,24 @@ resource "aws_ecr_repository" "app_repository" {
 
 # Configure Kubernetes provider with EKS cluster details
 provider "kubernetes" {
-  host    = aws_eks_cluster.cluster.endpoint
+  host = aws_eks_cluster.cluster.endpoint
   cluster_ca_certificate = base64decode(aws_eks_cluster.cluster.cluster_certificate)
-  token    = aws_eks_cluster_auth.cluster_auth.token
+  token = aws_eks_cluster_auth.cluster_auth.token
 }
 
 # Provision the EKS cluster using the configured VPC and security group
 resource "aws_eks_cluster" "cluster" {
   name = var.eks_cluster_name
   role_arn = aws_iam_role.cluster_role.arn
+  vpc_config {
+    security_group_ids = [aws_security_group.cluster_sg.id]
+    subnet_ids = [
+      aws_subnet.public.id,
+      aws_subnet.private.id,
+    ]
+  }
+  # ... other cluster configuration options (e.g., node group configuration)
 }
-
 
 # Define Kubernetes deployment for your Java application
 resource "kubernetes_deployment" "java_app_deployment" {
@@ -117,7 +124,6 @@ resource "kubernetes_deployment" "java_app_deployment" {
         app = "java-app"
       }
     }
-  }
 
     template {
       metadata {
@@ -133,5 +139,6 @@ resource "kubernetes_deployment" "java_app_deployment" {
         }
       }
     }
+  }
 }
 
