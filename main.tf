@@ -15,21 +15,25 @@ variable "ecr_repository_name" {
   default = "java-app-ecr-repo"
 }
 
-# ... other variables for image tag, service type, etc. (add as needed)
-
-# Create VPC with public and private subnets
+# Resource for the VPC
 resource "aws_vpc" "main" {
   cidr_block = "10.0.0.0/16"
 
-  subnet {
-    cidr_block = "10.0.1.0/24"
-    availability_zone = var.aws_region + "a"
-  }
+  # ... other VPC configuration options
+}
 
-  subnet {
-    cidr_block = "10.0.2.0/24"
-    availability_zone = var.aws_region + "b"
-  }
+# Define Public Subnet
+resource "aws_subnet" "public" {
+  vpc_id = aws_vpc.main.id
+  cidr_block = "10.0.1.0/24"
+  availability_zone = var.aws_region + "a"
+}
+
+# Define Private Subnet
+resource "aws_subnet" "private" {
+  vpc_id = aws_vpc.main.id
+  cidr_block = "10.0.2.0/24"
+  availability_zone = var.aws_region + "b"
 }
 
 # Create security group for the EKS cluster
@@ -75,7 +79,9 @@ EOF
 
 resource "aws_iam_role" "service_account_role" {
   name = "java-app-service-account-role"
-  # ... attach policies for service account access
+  assume_role_policy = <<EOF
+  # Define the assume role policy document here
+EOF
 }
 
 # Create an Amazon ECR repository to store your Docker image
@@ -85,24 +91,17 @@ resource "aws_ecr_repository" "app_repository" {
 
 # Configure Kubernetes provider with EKS cluster details
 provider "kubernetes" {
-  host        = aws_eks_cluster.cluster.endpoint
+  host    = aws_eks_cluster.cluster.endpoint
   cluster_ca_certificate = base64decode(aws_eks_cluster.cluster.cluster_certificate)
-  token       = aws_eks_cluster_auth.cluster_auth.token
+  token    = aws_eks_cluster_auth.cluster_auth.token
 }
 
 # Provision the EKS cluster using the configured VPC and security group
 resource "aws_eks_cluster" "cluster" {
   name = var.eks_cluster_name
   role_arn = aws_iam_role.cluster_role.arn
-  vpc_config {
-    security_group_ids = [aws_security_group.cluster_sg.id]
-    subnet_ids = [
-      aws_subnet.public.id,
-      aws_subnet.private.id,
-    ]
-  }
-  # ... other cluster configuration options (e.g., node group configuration)
 }
+
 
 # Define Kubernetes deployment for your Java application
 resource "kubernetes_deployment" "java_app_deployment" {
