@@ -44,8 +44,28 @@ resource "aws_eks_cluster" "example" {
   }
 }
 
-#Deploy the application to the Kubernetes cluster
+# Null resource to wait for cluster to be fully provisioned
+resource "null_resource" "wait_for_cluster" {
+  provisioner "local-exec" {
+    command = "sleep 300"  # Wait for 5 minutes (adjust as needed)
+  }
+
+  depends_on = [aws_eks_cluster.example]
+}
+
+# Null resource to verify Kubernetes API connectivity
+resource "null_resource" "verify_api_connectivity" {
+  provisioner "local-exec" {
+    command = "kubectl cluster-info"  # Verify Kubernetes API connectivity
+  }
+
+  depends_on = [null_resource.wait_for_cluster]
+}
+
+# Deploy the application to the Kubernetes cluster
 resource "kubernetes_deployment" "example_app" {
+  depends_on = [null_resource.verify_api_connectivity]  # Wait for API connectivity before deployment
+  
   metadata {
     name      = "example-app"
     labels = {
@@ -77,25 +97,6 @@ resource "kubernetes_deployment" "example_app" {
           port {
             container_port = 80
           }
-
-          # Define liveness and readiness probes
-          liveness_probe {
-            http_get {
-              path = "/"
-              port = 80
-            }
-            initial_delay_seconds = 3
-            period_seconds        = 10
-          }
-
-          readiness_probe {
-            http_get {
-              path = "/"
-              port = 80
-            }
-            initial_delay_seconds = 5
-            period_seconds        = 10
-          }
         }
       }
     }
@@ -110,7 +111,7 @@ resource "kubernetes_service" "example_service" {
 
   spec {
     selector = {
-      app = kubernetes_deployment.example_app.metadata[0].labels["app"]
+      app = kubernetes_deployment.example_app.spec[0].template[0].metadata[0].labels["app"]
     }
 
     port {
