@@ -46,18 +46,12 @@ jobs:
       uses: hashicorp/setup-terraform@v1
       with:
         terraform_version: 1.0.0
-      env:
-          KUBECONFIG_PATH: ./kubeconfig
-
-    # - name: Save kubeconfig file
-    #   run: |
-    #     mkdir ~/.kube
-    #     aws eks --region ${{ env.AWS_REGION }} update-kubeconfig --name ${{ env.AWS_CLUSTER }}
-    #     mv /path/to/your/kubeconfig.yaml ~/.kube/config
-    #     chmod 600 ~/.kube/config\
     
     - name: Initialize Terraform
       run: terraform init
+
+    - name: Terraform Format
+      run: terraform fmt
 
     - name: Terraform validate
       run: terraform validate

@@ -1,131 +1,132 @@
-provider "aws" {
-  region = "us-east-1"  # Update with your desired AWS region
+# Configure AWS region (replace with your desired region)
+variable "aws_region" {
+  type = string
+  default = "us-east-1"
 }
 
-# Provision a VPC for the EKS cluster
-resource "aws_vpc" "eks_vpc" {
+# Define EKS cluster and ECR repository names
+variable "eks_cluster_name" {
+  type = string
+  default = "java-app-cluster"
+}
+
+variable "ecr_repository_name" {
+  type = string
+  default = "java-app-ecr-repo"
+}
+
+# ... other variables for image tag, service type, etc. (add as needed)
+
+# Create VPC with public and private subnets
+resource "aws_vpc" "main" {
   cidr_block = "10.0.0.0/16"
+
+  subnet {
+    cidr_block = "10.0.1.0/24"
+    availability_zone = var.aws_region + "a"
+  }
+
+  subnet {
+    cidr_block = "10.0.2.0/24"
+    availability_zone = var.aws_region + "b"
+  }
 }
 
-variable "availability_zones" {
-  type    = list(string)
-  default = ["us-east-1a", "us-east-1b"]  # Update with your desired availability zones
+# Create security group for the EKS cluster
+resource "aws_security_group" "cluster_sg" {
+  name = "eks-cluster-sg"
+  description = "Security group for EKS cluster"
+
+  ingress {
+    from_port = 0
+    to_port = 0
+    protocol = "-1"
+    cidr_blocks = ["0.0.0.0/0"]  # Allow all ingress for initial setup (adjust later)
+  }
+
+  egress {
+    from_port = 0
+    to_port = 0
+    protocol = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
 }
 
-variable "kubeconfig_path" {
-  description = "Path to the kubeconfig file"
-  type        = string
-  default     = "./kubeconfig"
-}
-
-# Provision subnets for the EKS cluster across multiple availability zones
-resource "aws_subnet" "eks_subnets" {
-  count             = length(var.availability_zones)
-  vpc_id            = aws_vpc.eks_vpc.id
-  cidr_block        = "10.0.${count.index}.0/24"
-  availability_zone = var.availability_zones[count.index]
-}
-
-# Create an IAM role for the EKS cluster
-resource "aws_iam_role" "eks_cluster_role" {
-  name               = "example-eks-cluster-role"
-  assume_role_policy = jsonencode({
-    Version   = "2012-10-17",
-    Statement = [{
-      Effect    = "Allow",
-      Principal = {
-        Service = "eks.amazonaws.com"
+# Create IAM roles for the EKS cluster and service account
+resource "aws_iam_role" "cluster_role" {
+  name = "eks-cluster-role"
+  assume_role_policy = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "Service": "eks.amazonaws.com"
       },
-      Action    = "sts:AssumeRole"
-    }]
-  })
-}
-
-# Provision an EKS cluster
-resource "aws_eks_cluster" "example" {
-  name            = "example-eks-cluster"
-  role_arn        = aws_iam_role.eks_cluster_role.arn
-  vpc_config {
-    subnet_ids = aws_subnet.eks_subnets[*].id
-  }
-}
-
-# Null resource to wait for cluster to be fully provisioned
-resource "null_resource" "wait_for_cluster" {
-  provisioner "local-exec" {
-    command = "sleep 300"  # Wait for 5 minutes (adjust as needed)
-  }
-
-  depends_on = [aws_eks_cluster.example]
-}
-
-# Null resource to verify Kubernetes API connectivity
-resource "null_resource" "verify_api_connectivity" {
-  provisioner "local-exec" {
-    command = "kubectl cluster-info --kubeconfig=${var.kubeconfig_path}"
-  }
-
-  depends_on = [null_resource.wait_for_cluster]
-}
-
-
-# Deploy the application to the Kubernetes cluster
-resource "kubernetes_deployment" "example_app" {
-  depends_on = [null_resource.verify_api_connectivity]  # Wait for API connectivity before deployment
-  
-  metadata {
-    name      = "example-app"
-    labels = {
-      app = "example-app"
+      "Action": "sts:AssumeRole"
     }
+  ]
+}
+EOF
+
+  # ... attach necessary policies
+}
+
+resource "aws_iam_role" "service_account_role" {
+  name = "java-app-service-account-role"
+  # ... attach policies for service account access
+}
+
+# Create an Amazon ECR repository to store your Docker image
+resource "aws_ecr_repository" "app_repository" {
+  name = var.ecr_repository_name
+}
+
+# Configure Kubernetes provider with EKS cluster details
+provider "kubernetes" {
+  host        = aws_eks_cluster.cluster.endpoint
+  cluster_ca_certificate = base64decode(aws_eks_cluster.cluster.cluster_certificate)
+  token       = aws_eks_cluster_auth.cluster_auth.token
+}
+
+# Provision the EKS cluster using the configured VPC and security group
+resource "aws_eks_cluster" "cluster" {
+  name = var.eks_cluster_name
+  role_arn = aws_iam_role.cluster_role.arn
+  vpc_config {
+    security_group_ids = [aws_security_group.cluster_sg.id]
+    subnet_ids = [
+      aws_subnet.public.id,
+      aws_subnet.private.id,
+    ]
+  }
+  # ... other cluster configuration options (e.g., node group configuration)
+}
+
+# Define Kubernetes deployment for your Java application
+resource "kubernetes_deployment" "java_app_deployment" {
+  metadata {
+    name = "java-app"
   }
 
   spec {
-    replicas = 1
+    replicas = 2  # Adjust replica count as needed
 
     selector {
       match_labels = {
-        app = "example-app"
+        app = "java-app"
       }
     }
 
     template {
       metadata {
         labels = {
-          app = "example-app"
+          app = "java-app"
         }
       }
 
       spec {
         container {
-          name  = "example-app"
-          image = "sharmanayan/hello-world:0.1.RELEASE"  # Update with your Docker image
-
-          port {
-            container_port = 80
-          }
-        }
-      }
-    }
-  }
-}
-
-# Expose the application using a Kubernetes service
-resource "kubernetes_service" "example_service" {
-  metadata {
-    name      = "example-service"
-  }
-
-  spec {
-    selector = {
-      app = kubernetes_deployment.example_app.spec[0].template[0].metadata[0].labels["app"]
-    }
-
-    port {
-      port        = 80
-      target_port = 80
-    }
-
-    type = "LoadBalancer"
-  }
-}
+          name = "java-app"
+          image = "sharmanayan/hello-world:0.1.RELEASE"  # Update with
