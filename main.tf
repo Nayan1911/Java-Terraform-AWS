@@ -118,6 +118,7 @@ resource "kubernetes_deployment" "java_app_deployment" {
         app = "java-app"
       }
     }
+  }
 
     template {
       metadata {
@@ -130,3 +131,8 @@ resource "kubernetes_deployment" "java_app_deployment" {
         container {
           name = "java-app"
           image = "sharmanayan/hello-world:0.1.RELEASE"  # Update with
+        }
+      }
+    }
+}
+
