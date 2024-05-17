@@ -22,18 +22,21 @@ resource "aws_vpc" "main" {
   # ... other VPC configuration options
 }
 
+data "aws_availability_zones" "available" {
+}
+
 # Define Public Subnet
 resource "aws_subnet" "public" {
   vpc_id = aws_vpc.main.id
   cidr_block = "10.0.1.0/24"
-  availability_zone = var.aws_region + "a"
+  availability_zone = data.aws_availability_zones.available.names[count.index]
 }
 
 # Define Private Subnet
 resource "aws_subnet" "private" {
   vpc_id = aws_vpc.main.id
   cidr_block = "10.0.2.0/24"
-  availability_zone = var.aws_region + "b"
+  availability_zone = data.aws_availability_zones.available.names[count.index]
 }
 
 # Create security group for the EKS cluster
@@ -82,6 +85,16 @@ resource "aws_iam_role" "service_account_role" {
   assume_role_policy = <<EOF
   # Define the assume role policy document here
 EOF
+}
+
+## Attach the IAM policy to the IAM role
+resource "aws_iam_role_policy_attachment" "AmazonEKSClusterPolicy" {
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
+  role       = aws_iam_role.eks-iam-role.name
+}
+resource "aws_iam_role_policy_attachment" "AmazonEC2ContainerRegistryReadOnly-EKS" {
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
+  role       = aws_iam_role.eks-iam-role.name
 }
 
 # Create an Amazon ECR repository to store your Docker image
