@@ -56,11 +56,12 @@ resource "null_resource" "wait_for_cluster" {
 # Null resource to verify Kubernetes API connectivity
 resource "null_resource" "verify_api_connectivity" {
   provisioner "local-exec" {
-    command = "kubectl cluster-info"  # Verify Kubernetes API connectivity
+    command = "kubectl cluster-info --kubeconfig=path/to/kubeconfig"
   }
 
   depends_on = [null_resource.wait_for_cluster]
 }
+
 
 # Deploy the application to the Kubernetes cluster
 resource "kubernetes_deployment" "example_app" {
