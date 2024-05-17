@@ -12,6 +12,12 @@ variable "availability_zones" {
   default = ["us-east-1a", "us-east-1b"]  # Update with your desired availability zones
 }
 
+variable "kubeconfig_path" {
+  description = "Path to the kubeconfig file"
+  type        = string
+  default     = "./kubeconfig"
+}
+
 # Provision subnets for the EKS cluster across multiple availability zones
 resource "aws_subnet" "eks_subnets" {
   count             = length(var.availability_zones)
@@ -56,7 +62,7 @@ resource "null_resource" "wait_for_cluster" {
 # Null resource to verify Kubernetes API connectivity
 resource "null_resource" "verify_api_connectivity" {
   provisioner "local-exec" {
-    command = "kubectl cluster-info --kubeconfig=path/to/kubeconfig"
+    command = "kubectl cluster-info --kubeconfig=${var.kubeconfig_path}"
   }
 
   depends_on = [null_resource.wait_for_cluster]
