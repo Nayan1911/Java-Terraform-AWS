@@ -53,7 +53,7 @@ resource "kubernetes_namespace" "example_namespace" {
   }
 }
 
-# Deploy the application to the Kubernetes cluster
+#Deploy the application to the Kubernetes cluster
 resource "kubernetes_deployment" "example_app" {
   metadata {
     name      = "example-app"
