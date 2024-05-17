@@ -20,7 +20,6 @@ resource "aws_subnet" "eks_subnets" {
   availability_zone = var.availability_zones[count.index]
 }
 
-
 # Create an IAM role for the EKS cluster
 resource "aws_iam_role" "eks_cluster_role" {
   name               = "example-eks-cluster-role"
@@ -44,7 +43,6 @@ resource "aws_eks_cluster" "example" {
     subnet_ids = aws_subnet.eks_subnets[*].id
   }
 }
-
 
 #Deploy the application to the Kubernetes cluster
 resource "kubernetes_deployment" "example_app" {
@@ -79,6 +77,25 @@ resource "kubernetes_deployment" "example_app" {
           port {
             container_port = 80
           }
+
+          # Define liveness and readiness probes
+          liveness_probe {
+            http_get {
+              path = "/"
+              port = 80
+            }
+            initial_delay_seconds = 3
+            period_seconds        = 10
+          }
+
+          readiness_probe {
+            http_get {
+              path = "/"
+              port = 80
+            }
+            initial_delay_seconds = 5
+            period_seconds        = 10
+          }
         }
       }
     }
@@ -93,7 +110,7 @@ resource "kubernetes_service" "example_service" {
 
   spec {
     selector = {
-      app = kubernetes_deployment.example_app.spec[0].template[0].metadata[0].labels["app"]
+      app = kubernetes_deployment.example_app.metadata[0].labels["app"]
     }
 
     port {
@@ -104,4 +121,3 @@ resource "kubernetes_service" "example_service" {
     type = "LoadBalancer"
   }
 }
-
